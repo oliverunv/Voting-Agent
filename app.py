@@ -7,7 +7,7 @@ import re
 from openai import OpenAI
 
 # Load dataset
-df = pd.read_csv("data/sc_voting.csv")
+df = pd.read_excel("data/sc_voting.xlsx")
 
 # Set up page
 st.set_page_config(page_title="UNSC Voting Explorer", layout="wide")
