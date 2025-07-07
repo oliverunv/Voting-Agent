@@ -32,6 +32,7 @@ The DataFrame `df` contains the following columns:
 - Agenda region: The geographical region related to the agenda item (e.g., "Middle East", "Africa", "Asia").
 - Vote: The vote cast by the Member State on the draft resolution. Values include "Yes", "No", or "Abstain".
 - Member State: The name of the country casting the vote (e.g., "Argentina", "China", "United States").
+- Year: Extracted year from the Date column, stored as an integer (e.g., 1994). Use this column to filter by year.
 """
 
 # Initialize session
