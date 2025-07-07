@@ -8,7 +8,8 @@ from openai import OpenAI
 
 # Load dataset
 df = pd.read_csv("data/sc_voting.csv")
-df["Year"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce").dt.year
+df["Date"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce")
+df["Year"] = df["Year"].round().astype("Int64")
 
 # Set up page
 st.set_page_config(page_title="UNSC Voting Explorer", layout="wide")
@@ -22,7 +23,8 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 column_descriptions = """
 The DataFrame `df` contains the following columns:
 
-- ID: A unique numeric identifier for each row in the dataset.
+- ID: An identifier for each draft resolution put to a vote. Since the data is unpivoted by Member State, each ID appears once per vote cast. Use `ID.nunique()` to count draft resolutions, and `len(df)` or `.shape[0]` to count total individual votes.
+- Year: stored as an integer (e.g., 1994). Use this column to filter by year. When plotting, treat it as a categorical/time label — do not format it with commas (e.g., write "2002", not "2,002").
 - Date: The date on which the Security Council held the vote (in DD/MM/YYYY format).
 - Resolution: The number assigned to the resolution, if successfully adopted (e.g., "924 (1994)").
 - Draft: The UN document symbol of the draft resolution (e.g., "S/1994/646").
@@ -32,7 +34,6 @@ The DataFrame `df` contains the following columns:
 - Agenda region: The geographical region related to the agenda item (e.g., "Middle East", "Africa", "Asia").
 - Vote: The vote cast by the Member State on the draft resolution. Values include "Yes", "No", or "Abstain".
 - Member State: The name of the country casting the vote (e.g., "Argentina", "China", "United States").
-- Year: Extracted year from the Date column, stored as an integer (e.g., 1994). Use this column to filter by year.
 """
 
 # Initialize session
@@ -67,7 +68,6 @@ Code:
     except Exception as e:
         return "⚠️ Could not generate explanation."
 
-
 # Show chat history
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -86,8 +86,8 @@ if user_input := st.chat_input("Your question..."):
     st.chat_message("user").markdown(user_input)
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # Build GPT prompt for code generation
-    prompt = f"""
+    # Build system prompt and history-based message list
+    system_prompt = f"""
 You are a Python data analyst working with a Pandas DataFrame called `df` in a Streamlit app.
 
 Only return clean, executable code — no markdown, no triple backticks, no comments, no imports, and do not redefine the DataFrame.
@@ -135,22 +135,23 @@ The user’s question is:
 Write only executable code using Streamlit to answer the question. Use the column names provided. Ensure the result is clearly written using natural sentences.
 """
 
+    # Add system + prior messages
+    chat_history = [{"role": "system", "content": system_prompt}]
+    chat_history += [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+
     with st.spinner("Generating response..."):
         try:
             response = client.chat.completions.create(
                 model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
+                messages=chat_history,
                 temperature=0.3
             )
             code = response.choices[0].message.content.strip()
 
-            # Extract clean Python code block from assistant response
+            # Extract clean code if it’s inside a code block
             match = re.search(r"```(?:python)?\n(.*?)```", code, re.DOTALL)
             if match:
                 code = match.group(1).strip()
-            else:
-                # Use the full response as fallback, if it's short and looks like code
-                code = code.strip()
 
             # Execute code
             buffer = io.StringIO()
@@ -164,10 +165,8 @@ Write only executable code using Streamlit to answer the question. Use the colum
 
             explanation = explain_code_steps(code, user_input)
 
-            # Display response
             with st.chat_message("assistant"):
                 st.markdown(result)
-
                 col1, col2 = st.columns(2)
                 with col1:
                     with st.expander("💻 Show code used"):
@@ -175,7 +174,7 @@ Write only executable code using Streamlit to answer the question. Use the colum
                 with col2:
                     with st.expander("🧠 Show steps taken"):
                         st.markdown(explanation)
-                    
+
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": result,
