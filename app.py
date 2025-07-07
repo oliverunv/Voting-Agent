@@ -7,12 +7,13 @@ import re
 from openai import OpenAI
 
 # Load dataset
-df = pd.read_excel("data/sc_voting.xlsx")
+df = pd.read_csv("data/sc_voting.csv")
+df["Year"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce").dt.year
 
 # Set up page
 st.set_page_config(page_title="UNSC Voting Explorer", layout="wide")
 st.title("🗳️ UN Security Council Voting Explorer")
-st.caption("💬 Ask anything about Security Council draft resolution votes since 1994.")
+st.caption("💬 Ask anything about voting on draft resolutions in the Security Council since 1994.")
 
 # Set up OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -88,33 +89,32 @@ if user_input := st.chat_input("Your question..."):
     prompt = f"""
 You are a Python data analyst working with a Pandas DataFrame called `df` in a Streamlit app.
 
-Only return clean, executable code blocks — no explanations, no markdown, no imports, and do not redefine the DataFrame.
+Only return clean, executable code — no markdown, no triple backticks, no comments, no imports, and do not redefine the DataFrame.
+
+Always use clear, human-readable sentences in st.write, e.g.:
+"France has voted No 22 times since 1994."
 
 The columns available in the DataFrame are:
 {column_descriptions}
 
-Here are examples of questions and the code to answer them using the `df` DataFrame:
+Use the following examples as **inspiration for tone and logic** — do NOT copy them literally or execute them:
 
----
-
+\"\"\"
 Question: How many draft resolutions were not adopted?
 Code:
-not_adopted = df[df["Outcome results"] == "Not adopted"]
-num_resolutions = not_adopted["Draft"].nunique()
-st.write(f"Number of draft resolutions not adopted: {num_resolutions}")
+st.write("There were", df[df["Outcome results"] == "Not adopted"]["Draft"].nunique(), "draft resolutions that were not adopted.")
 
 ---
 
-Question: How many No votes did France cast?
+Question: How many No votes did France cast since 1994?
 Code:
-france_no_votes = df[(df["Member State"] == "France") & (df["Vote"] == "No")]
-st.write(f"No votes cast by France: {len(france_no_votes)}")
+st.write("France has voted No", len(df[(df["Member State"] == "France") & (df["Vote"] == "No") & (df["Year"] >= 1994)]), "times since 1994.")
 
 ---
 
 Question: Compare how often each P5 member voted No.
 Code:
-p5 = ["China", "France", "Russia", "United Kingdom", "United States"]
+p5 = ["China", "France", "Russian Federation", "United Kingdom", "United States"]
 df_p5_no = df[(df["Vote"] == "No") & (df["Member State"].isin(p5))]
 no_counts = df_p5_no["Member State"].value_counts()
 st.bar_chart(no_counts)
@@ -126,13 +126,12 @@ Code:
 df_unique_res = df.drop_duplicates(subset="Draft")
 outcome_by_year = df_unique_res.groupby(["Year", "Outcome results"]).size().unstack(fill_value=0)
 st.bar_chart(outcome_by_year)
+\"\"\"
 
-The user wants to filter, summarize, or chart the data using these real columns.
-
-The question is:
+The user’s question is:
 \"{user_input}\"
 
-Return only executable Streamlit-compatible code to answer it.
+Write only executable code using Streamlit to answer the question. Use the column names provided. Ensure the result is clearly written using natural sentences.
 """
 
     with st.spinner("Generating response..."):
@@ -144,16 +143,13 @@ Return only executable Streamlit-compatible code to answer it.
             )
             code = response.choices[0].message.content.strip()
 
-            # Extract code
-            match = re.search(r"```python(.*?)```", code, re.DOTALL)
+            # Extract clean Python code block from assistant response
+            match = re.search(r"```(?:python)?\n(.*?)```", code, re.DOTALL)
             if match:
                 code = match.group(1).strip()
             else:
-                lines = code.splitlines()
-                code = "\n".join(
-                    line for line in lines
-                    if line.strip().startswith(("df", "st.", "plt.", "result_", "count_")) or " = " in line
-                )
+                # Use the full response as fallback, if it's short and looks like code
+                code = code.strip()
 
             # Execute code
             buffer = io.StringIO()
