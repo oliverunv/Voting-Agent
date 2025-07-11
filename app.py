@@ -14,7 +14,6 @@ df["Year"] = df["Year"].round().astype("Int64")
 # Set up page
 st.set_page_config(page_title="UNSC Voting Explorer", layout="wide")
 st.title("🗳️ UN Security Council Voting Explorer")
-st.caption("💬 Ask anything about voting on draft resolutions in the Security Council since 1994.")
 
 # Set up OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -28,7 +27,7 @@ The DataFrame `df` contains the following columns:
 - Date: The date on which the Security Council held the vote (in DD/MM/YYYY format).
 - Resolution: The number assigned to the resolution, if successfully adopted (e.g., "924 (1994)").
 - Draft: The UN document symbol of the draft resolution (e.g., "S/1994/646").
-- Outcome results: The result of the vote on the draft resolution (e.g., "Adopted unanimously", "Adopted by majority", "Not adopted").
+- Outcome results: The result of the vote on the draft resolution (contains the followin categories: "Adopted unanimously", "Adopted by consensus", "Adopted by acclamation", "Adopted by majority", "Adopted without a vote", "Not adopted - failed to receive required number of votes", "Not adopted - no vote", "Not adopted - veto").
 - Agenda item: The agenda item of the Security Council under which the vote took place (e.g., "The situation in the Republic of Yemen").
 - Agenda category: Indicates whether the agenda item is country-/region-specific, or thematic.
 - Agenda region: The geographical region related to the agenda item (e.g., "Middle East", "Africa", "Asia").
@@ -39,7 +38,7 @@ The DataFrame `df` contains the following columns:
 # Initialize session
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Ask me anything about Security Council voting patterns."}
+        {"role": "assistant", "content": "Ask me anything about voting on draft resolutions in the Security Council since 1992."}
     ]
 
 # Function to explain code steps
@@ -107,9 +106,9 @@ st.write("There were", df[df["Outcome results"] == "Not adopted"]["Draft"].nuniq
 
 ---
 
-Question: How many No votes did France cast since 1994?
+Question: How many No votes did France cast since 1992?
 Code:
-st.write("France has voted No", len(df[(df["Member State"] == "France") & (df["Vote"] == "No") & (df["Year"] >= 1994)]), "times since 1994.")
+st.write("France has voted No", len(df[(df["Member State"] == "France") & (df["Vote"] == "No") & (df["Year"] >= 1992)]), "times since 1992.")
 
 ---
 
@@ -188,3 +187,27 @@ Write only executable code using Streamlit to answer the question. Use the colum
                 "role": "assistant",
                 "content": f"❌ Error generating response:\n\n{e}"
             })
+
+st.markdown(
+    """
+    <style>
+    .footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        text-align: center;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        color: gray;
+        z-index: 999;
+        background-color: transparent;
+        backdrop-filter: blur(2px);
+    }
+    </style>
+    <div class="footer">
+        Built by Oliver Unverdorben · Powered by OpenAI · © 2025
+    </div>
+    """,
+    unsafe_allow_html=True
+)
