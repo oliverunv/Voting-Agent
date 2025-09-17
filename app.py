@@ -29,8 +29,8 @@ The DataFrame `df` contains the following columns:
 - Draft: The UN document symbol of the draft resolution (e.g., "S/1994/646").
 - Outcome results: The result of the vote on the draft resolution (contains the followin categories: "Adopted unanimously", "Adopted by consensus", "Adopted by acclamation", "Adopted by majority", "Adopted without a vote", "Not adopted - failed to receive required number of votes", "Not adopted - no vote", "Not adopted - veto").
 - Agenda item: The agenda item of the Security Council under which the vote took place (e.g., "The situation in the Republic of Yemen").
-- Agenda category: Indicates whether the agenda item is country-/region-specific, or thematic.
-- Agenda region: The geographical region related to the agenda item (e.g., "Middle East", "Africa", "Asia").
+- Category: Indicates whether the agenda item is country-/region-specific, or thematic.
+- Region: The geographical region related to the agenda item (e.g., "Middle East", "Africa", "Asia").
 - Vote: The vote cast by the Member State on the draft resolution. Values include "Yes", "No", or "Abstain".
 - Member State: The name of the country casting the vote (e.g., "Argentina", "China", "United States").
 """
