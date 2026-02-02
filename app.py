@@ -5,6 +5,24 @@ import contextlib
 import io
 import re
 from openai import OpenAI
+import os
+from streamlit.runtime.secrets import StreamlitSecretNotFoundError
+
+def get_secret(name: str) -> str:
+    try:
+        if name in st.secrets:
+            return st.secrets[name]
+    except StreamlitSecretNotFoundError:
+        pass
+    except Exception:
+        pass
+
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(
+            f"❌ Secret '{name}' not found in Streamlit secrets or environment variables."
+        )
+    return value
 
 # Load dataset
 df = pd.read_csv("data/sc_voting.csv")
@@ -16,7 +34,8 @@ st.set_page_config(page_title="UNSC Voting Explorer", layout="wide")
 st.title("🗳️ UN Security Council Voting Explorer")
 
 # Set up OpenAI client
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+openai_api_key = get_secret("OPENAI_API_KEY")
+client = OpenAI(api_key=openai_api_key)
 
 # Column descriptions to inform GPT prompt
 column_descriptions = """
@@ -27,7 +46,7 @@ The DataFrame `df` contains the following columns:
 - Date: The date on which the Security Council held the vote (in DD/MM/YYYY format).
 - Resolution: The number assigned to the resolution, if successfully adopted (e.g., "924 (1994)").
 - Draft: The UN document symbol of the draft resolution (e.g., "S/1994/646").
-- Outcome results: The result of the vote on the draft resolution (contains the followin categories: "Adopted unanimously", "Adopted by consensus", "Adopted by acclamation", "Adopted by majority", "Adopted without a vote", "Not adopted - failed to receive required number of votes", "Not adopted - no vote", "Not adopted - veto").
+- Outcome: The result of the vote on the draft resolution (contains the followin categories: "Adopted unanimously", "Adopted by consensus", "Adopted by acclamation", "Adopted by majority", "Adopted without a vote", "Not adopted - failed to receive required number of votes", "Not adopted - no vote", "Not adopted - veto").
 - Agenda item: The agenda item of the Security Council under which the vote took place (e.g., "The situation in the Republic of Yemen").
 - Category: Indicates whether the agenda item is country-/region-specific, or thematic.
 - Region: The geographical region related to the agenda item (e.g., "Middle East", "Africa", "Asia").
